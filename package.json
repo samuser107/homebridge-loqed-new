@@ -1,5 +1,5 @@
 {
-  "private": true,
+  "private": false,
   "displayName": "Loqed",
   "name": "homebridge-loqed",
   "version": "0.0.1",
@@ -7,10 +7,10 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git://github.com/USERNAME/GITHUB_PROJECT_NAME.git"
+    "url": "git://github.com/fbdegroot/homebridge-loqed.git"
   },
   "bugs": {
-    "url": "https://github.com/USERNAME/GITHUB_PROJECT_NAME/issues"
+    "url": "https://github.com/fbdegroot/homebridge-loqed/issues"
   },
   "engines": {
     "node": ">=14.18.1",
