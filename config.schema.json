@@ -1,16 +1,65 @@
 {
-  "pluginAlias": "ExampleHomebridgePlugin",
+  "pluginAlias": "LoqedPlatform",
   "pluginType": "platform",
   "singular": true,
   "schema": {
     "type": "object",
     "properties": {
-      "name": {
-        "title": "Name",
+      "apiKey": {
+        "title": "API Key",
         "type": "string",
+        "required": true
+      },
+      "apiToken": {
+        "title": "API Token",
+        "type": "string",
+        "required": true
+      },
+      "locks": {
+        "type": "array",
+        "minItems": 1,
         "required": true,
-        "default": "Example Dynamic Platform"
+        "items": {
+          "title": "Lock",
+          "type": "object",
+          "properties": {
+            "name": {
+              "title": "Name",
+              "type": "string",
+              "required": true
+            },
+            "oldLockId": {
+              "title": "Old Lock Id",
+              "type": "number",
+              "required": false
+            },
+            "lockId": {
+              "title": "Lock Id",
+              "type": "string",
+              "required": false
+            }
+          }
+        }
       }
     }
-  }
+  },
+  "form": [
+    "apiKey",
+    "apiToken",
+    {
+      "type": "fieldset",
+      "expandable": false,
+      "items": [
+        {
+          "key": "locks",
+          "type": "array",
+          "items": [
+            "locks[].name",
+            "locks[].oldLockId",
+            "locks[].lockId"
+          ]
+        }
+      ]
+    }
+  ]
 }
