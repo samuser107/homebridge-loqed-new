@@ -1,13 +1,16 @@
 import { LockedState } from '../models/locked-state';
 import { Logger } from 'homebridge';
 import { LoqedStatus } from '../models/loqed-status.model';
-import { Observable, ReplaySubject } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import request from 'request';
+import express from 'express';
+import { LoqedWebhookStatus } from '../models/loqed-webhook-status.model';
 
 export class LoqedService {
-    public readonly lockStatus$: Observable<LoqedStatus>;
+    public readonly lockStatus$: Observable<LoqedStatus | null>;
 
-    private readonly lockStatusSubject: ReplaySubject<LoqedStatus>;
+    private readonly lockStatusSubject: BehaviorSubject<LoqedStatus | null>;
+    private server!: express.Application;
 
     private setStateUrl = 'https://gateway.production.loqed.com/v1/locks/{OLDLOCKID}/state?lock_api_key={APIKEY}&api_token={APITOKEN}&lock_state={STATE}&local_key_id=0';
     private getStateUrl = 'https://app.loqed.com/API/lock_status.php?api_token={APITOKEN}&lock_id={LOCKID}';
@@ -17,14 +20,40 @@ export class LoqedService {
         private apiToken: string,
         private oldLockId: number,
         private lockId: string,
+        webhookPort: number | undefined,
         private log: Logger
     ) {
-        this.lockStatusSubject = new ReplaySubject<LoqedStatus>(1);
+        this.lockStatusSubject = new BehaviorSubject<LoqedStatus | null>(null);
         this.lockStatus$ = this.lockStatusSubject.asObservable();
+
+        if (webhookPort && !isNaN(webhookPort)) {
+            this.enableWebhooks(webhookPort);
+        }
     }
 
-    public unlock(): Promise<void> {
-        return this.changeState('DAY_LOCK');
+    public enableWebhooks(port: number): void {
+        this.server = express();
+        this.server.use(express.json());
+        this.server.post('/webhook', (req, res) => {
+            const loqedWebhookStatus = new LoqedWebhookStatus(req.body);
+            if (loqedWebhookStatus.lock_id !== this.oldLockId) {
+                return;
+            }
+
+            this.log.info('Received webhook request from', req.ip, req.hostname);
+            this.log.info(req.body);
+
+            const newStatus = Object.assign(new LoqedStatus(), this.lockStatusSubject.value);
+            newStatus.bolt_state = req.body.requested_state;
+
+            this.lockStatusSubject.next(newStatus);
+
+            res.status(200).send('OK');
+        });
+
+        this.server.listen(port, () => {
+            this.log.info('Listening for webhook request on port', port);
+        });
     }
 
     public toggle(lockedState: LockedState): Promise<void> {

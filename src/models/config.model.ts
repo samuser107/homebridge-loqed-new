@@ -10,4 +10,5 @@ export class Config implements PlatformConfig {
     apiKey?: string;
     apiToken?: string;
     locks?: Lock[];
+    webhookPort?: number;
 }

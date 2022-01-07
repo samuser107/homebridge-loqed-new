@@ -18,13 +18,13 @@ export class LoqedStatus {
     }
 
     get state(): LockedState {
-        switch (this.bolt_state) {
+        switch (this.bolt_state.toLowerCase()) {
             case 'day_lock':
                 return LockedState.Unlocked;
             case 'night_lock':
                 return LockedState.Locked;
             default:
-                throw new Error('Unknown state');
+                return LockedState.Unknown;
         }
     }
 }

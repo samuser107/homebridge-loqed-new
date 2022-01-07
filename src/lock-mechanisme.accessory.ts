@@ -19,7 +19,13 @@ export class LockMechanismeAccessory {
     ) {
         this.lock = accessory.context.device as Lock;
 
-        this.loqedService = new LoqedService(this.platform.config.apiKey!, this.platform.config.apiToken!, this.lock.oldLockId, this.lock.lockId, this.platform.log);
+        this.loqedService = new LoqedService(
+            this.platform.config.apiKey!,
+            this.platform.config.apiToken!,
+            this.lock.oldLockId,
+            this.lock.lockId,
+            this.platform.config.webhookPort,
+            this.platform.log);
 
         this.accessory.getService(this.platform.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Fabian de Groot')
@@ -32,8 +38,13 @@ export class LockMechanismeAccessory {
         this.loqedService.getLockedState(this.lock.lockId);
         this.loqedService.lockStatus$
             .subscribe(status => {
-                this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState, status.state);
-                this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockTargetState, status.state);
+                if (!status) {
+                    return;
+                }
+
+                if (status.state === LockedState.Unlocked || status.state === LockedState.Locked) {
+                    this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState, status.state);
+                }
 
                 this.batteryService.setCharacteristic(this.platform.Characteristic.BatteryLevel, status.battery_percentage);
                 this.batteryService.setCharacteristic(this.platform.Characteristic.StatusLowBattery, status.battery_percentage <= 20);
@@ -56,17 +67,10 @@ export class LockMechanismeAccessory {
 
         this.platform.log.debug('Updating target state to', this.state === LockedState.Unlocked ? 'Unlocked' : 'Locked');
         this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockTargetState,
-            this.state === LockedState.Unlocked ? 0 : 1,
+            this.state === LockedState.Unlocked ? 0 : 1
         );
 
         this.loqedService.toggle(this.state);
-        this.loqedService.startPollingFor(this.state)
-            .then(() => {
-                this.platform.log.debug('Updating current state to', this.state === LockedState.Unlocked ? 'Unlocked' : 'Locked');
-                this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState,
-                    this.state === LockedState.Unlocked ? 0 : 1,
-                );
-            });
 
         callback(null);
     }

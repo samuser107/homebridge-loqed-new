@@ -1,65 +1,71 @@
 {
-  "pluginAlias": "LoqedPlatform",
-  "pluginType": "platform",
-  "singular": true,
-  "schema": {
-    "type": "object",
-    "properties": {
-      "apiKey": {
-        "title": "API Key",
-        "type": "string",
-        "required": true
-      },
-      "apiToken": {
-        "title": "API Token",
-        "type": "string",
-        "required": true
-      },
-      "locks": {
-        "type": "array",
-        "minItems": 1,
-        "required": true,
-        "items": {
-          "title": "Lock",
-          "type": "object",
-          "properties": {
-            "name": {
-              "title": "Name",
-              "type": "string",
-              "required": true
+    "pluginAlias": "LoqedPlatform",
+    "pluginType": "platform",
+    "singular": true,
+    "schema": {
+        "type": "object",
+        "properties": {
+            "apiKey": {
+                "title": "API Key",
+                "type": "string",
+                "required": true
             },
-            "oldLockId": {
-              "title": "Old Lock Id",
-              "type": "number",
-              "required": false
+            "apiToken": {
+                "title": "API Token",
+                "type": "string",
+                "required": true
             },
-            "lockId": {
-              "title": "Lock Id",
-              "type": "string",
-              "required": false
+            "webhookPort": {
+                "title": "Webhook port",
+                "type": "number",
+                "required": false
+            },
+            "locks": {
+                "type": "array",
+                "minItems": 1,
+                "required": true,
+                "items": {
+                    "title": "Lock",
+                    "type": "object",
+                    "properties": {
+                        "name": {
+                            "title": "Name",
+                            "type": "string",
+                            "required": true
+                        },
+                        "oldLockId": {
+                            "title": "Old Lock Id",
+                            "type": "number",
+                            "required": false
+                        },
+                        "lockId": {
+                            "title": "Lock Id",
+                            "type": "string",
+                            "required": false
+                        }
+                    }
+                }
             }
-          }
         }
-      }
-    }
-  },
-  "form": [
-    "apiKey",
-    "apiToken",
-    {
-      "type": "fieldset",
-      "expandable": false,
-      "items": [
+    },
+    "form": [
+        "apiKey",
+        "apiToken",
+        "webhookPort",
         {
-          "key": "locks",
-          "type": "array",
-          "items": [
-            "locks[].name",
-            "locks[].oldLockId",
-            "locks[].lockId"
-          ]
+            "type": "fieldset",
+            "expandable": false,
+            "items": [
+                {
+                    "key": "locks",
+                    "type": "array",
+                    "items": [
+                        "locks[].name",
+                        "locks[].oldLockId",
+                        "locks[].lockId"
+                    ]
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }
