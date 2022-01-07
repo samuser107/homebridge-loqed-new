@@ -43,6 +43,7 @@ export class LockMechanismeAccessory {
                 }
 
                 if (status.state === LockedState.Unlocked || status.state === LockedState.Locked) {
+                    this.state = status.state;
                     this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState, status.state);
                 }
 

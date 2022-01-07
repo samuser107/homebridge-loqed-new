@@ -1,10 +1,10 @@
+import { BehaviorSubject, Observable } from 'rxjs';
 import { LockedState } from '../models/locked-state';
 import { Logger } from 'homebridge';
 import { LoqedStatus } from '../models/loqed-status.model';
-import { BehaviorSubject, Observable } from 'rxjs';
-import request from 'request';
-import express from 'express';
 import { LoqedWebhookStatus } from '../models/loqed-webhook-status.model';
+import express from 'express';
+import request from 'request';
 
 export class LoqedService {
     public readonly lockStatus$: Observable<LoqedStatus | null>;
@@ -36,14 +36,14 @@ export class LoqedService {
         this.server.use(express.json());
         this.server.post('/webhook', (req, res) => {
             const loqedWebhookStatus = new LoqedWebhookStatus(req.body);
-            if (loqedWebhookStatus.lock_id !== this.oldLockId) {
+            if (loqedWebhookStatus.lock_id !== this.oldLockId || !this.lockStatusSubject.value) {
                 return;
             }
 
-            this.log.info('Received webhook request from', req.ip, req.hostname);
-            this.log.info(req.body);
+            this.log.debug('Received webhook request from', req.ip, req.hostname);
+            this.log.debug(req.body);
 
-            const newStatus = Object.assign(new LoqedStatus(), this.lockStatusSubject.value);
+            const newStatus = new LoqedStatus(this.lockStatusSubject.value);
             newStatus.bolt_state = req.body.requested_state;
 
             this.lockStatusSubject.next(newStatus);
@@ -52,7 +52,7 @@ export class LoqedService {
         });
 
         this.server.listen(port, () => {
-            this.log.info('Listening for webhook request on port', port);
+            this.log.debug('Listening for webhook request on port', port);
         });
     }
 
