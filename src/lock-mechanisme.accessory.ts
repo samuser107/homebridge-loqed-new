@@ -50,10 +50,21 @@ export class LockMechanismeAccessory {
                     return;
                 }
 
+                this.platform.log.debug('Received status update to', LockState[status.state]);
+
                 if (this.state.current !== status.state && (status.state === LockState.Unlocked || status.state === LockState.Locked)) {
+                    this.platform.log.debug('Updating current state from', LockState[this.state.current], 'to', LockState[status.state]);
                     this.state.current = status.state;
-                    this.platform.log.debug('Updating current state to', LockState[this.state.current]);
-                    this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState, status.state);
+                    this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState,
+                        this.state.target === LockState.Unlocked
+                            ? this.platform.Characteristic.LockCurrentState.UNSECURED
+                            : this.platform.Characteristic.LockCurrentState.SECURED
+                    );
+                }
+
+                // first status update should also set the target state
+                if (this.state.target === LockState.Unknown) {
+                    this.state.target = this.state.current;
                 }
 
                 if (this.state.batteryPercentage !== status.battery_percentage) {
@@ -81,9 +92,9 @@ export class LockMechanismeAccessory {
             return;
         }
 
+        this.platform.log.debug('Updating target state from', LockState[this.state.target], 'to', LockState[newTargetState]);
         this.state.target = newTargetState;
 
-        this.platform.log.debug('Updating target state to', LockState[this.state.current]);
         this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockTargetState,
             this.state.target === LockState.Unlocked
                 ? this.platform.Characteristic.LockTargetState.UNSECURED
@@ -92,14 +103,25 @@ export class LockMechanismeAccessory {
 
         this.loqedService.toggle(this.state.target);
 
-        // todo set current state aswell if no webhook port is configured
+        // set current state aswell if no webhook port is configured
+        if (!this.platform.config.webhookPort) {
+            setTimeout(() => {
+                this.platform.log.debug('Updating current state from', LockState[this.state.current], 'to', LockState[this.state.target]);
+                this.state.current = this.state.target;
+                this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState,
+                    this.state.target === LockState.Unlocked
+                        ? this.platform.Characteristic.LockCurrentState.UNSECURED
+                        : this.platform.Characteristic.LockCurrentState.SECURED
+                );
+            }, 5000);
+        }
 
         callback(null);
     }
 
     getLockCurrentState(callback: CharacteristicGetCallback): void {
-        this.platform.log.debug('Get Characteristic LockCurrentState ->', LockState[this.state.target]);
-        callback(null, this.state.target === LockState.Unlocked
+        this.platform.log.debug('Get Characteristic LockCurrentState ->', LockState[this.state.current]);
+        callback(null, this.state.current === LockState.Unlocked
             ? this.platform.Characteristic.LockCurrentState.UNSECURED
             : this.platform.Characteristic.LockCurrentState.SECURED
         );
