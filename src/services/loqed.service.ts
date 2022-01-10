@@ -1,5 +1,5 @@
 import { BehaviorSubject, Observable } from 'rxjs';
-import { LockedState } from '../models/locked-state';
+import { LockState } from '../models/lock-state';
 import { Logger } from 'homebridge';
 import { LoqedStatus } from '../models/loqed-status.model';
 import { LoqedWebhookStatus } from '../models/loqed-webhook-status.model';
@@ -16,12 +16,12 @@ export class LoqedService {
     private getStateUrl = 'https://app.loqed.com/API/lock_status.php?api_token={APITOKEN}&lock_id={LOCKID}';
 
     constructor(
+        private log: Logger,
         private apiKey: string,
         private apiToken: string,
+        webhookPort: number | undefined,
         private oldLockId: number,
         private lockId: string,
-        webhookPort: number | undefined,
-        private log: Logger
     ) {
         this.lockStatusSubject = new BehaviorSubject<LoqedStatus | null>(null);
         this.lockStatus$ = this.lockStatusSubject.asObservable();
@@ -56,11 +56,11 @@ export class LoqedService {
         });
     }
 
-    public toggle(lockedState: LockedState): Promise<void> {
-        return this.changeState(lockedState === LockedState.Unlocked ? 'DAY_LOCK' : 'NIGHT_LOCK');
+    public toggle(lockedState: LockState): Promise<void> {
+        return this.changeState(lockedState === LockState.Unlocked ? 'DAY_LOCK' : 'NIGHT_LOCK');
     }
 
-    public async getLockedState(lockId: string): Promise<LockedState> {
+    public async getLockedState(lockId: string): Promise<LockState> {
         const url = this.getStateUrl
             .replace('{APITOKEN}', this.apiToken)
             .replace('{LOCKID}', lockId);
@@ -70,15 +70,15 @@ export class LoqedService {
 
         switch (status.bolt_state) {
             case 'day_lock':
-                return LockedState.Unlocked;
+                return LockState.Unlocked;
             case 'night_lock':
-                return LockedState.Locked;
+                return LockState.Locked;
             default:
                 throw new Error('Unknown state');
         }
     }
 
-    public async startPollingFor(lockedState: LockedState): Promise<boolean> {
+    public async startPollingFor(lockedState: LockState): Promise<boolean> {
         for (let i = 0; i < 5; i++) {
             const currentLockedState = await this.getLockedState(this.lockId);
             if (lockedState === currentLockedState) {

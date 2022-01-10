@@ -1,17 +1,22 @@
-import { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback } from 'homebridge';
+import { filter } from 'rxjs';
 import { Lock } from './models/lock.model';
-import { LockedState } from './models/locked-state';
+import { LockState } from './models/lock-state';
 import { LoqedPlatform } from './loqed.platform';
 import { LoqedService } from './services/loqed.service';
+import { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback } from 'homebridge';
 
 export class LockMechanismeAccessory {
-    public lock: Lock;
-
     private lockMechanismeService: Service;
     private batteryService: Service;
-    private state = LockedState.Unlocked;
-
     private loqedService: LoqedService;
+
+    private lock: Lock;
+
+    private state = {
+        current: LockState.Unknown,
+        target: LockState.Unknown,
+        batteryPercentage: null
+    };
 
     constructor(
         private readonly platform: LoqedPlatform,
@@ -20,12 +25,12 @@ export class LockMechanismeAccessory {
         this.lock = accessory.context.device as Lock;
 
         this.loqedService = new LoqedService(
+            this.platform.log,
             this.platform.config.apiKey!,
             this.platform.config.apiToken!,
-            this.lock.oldLockId,
-            this.lock.lockId,
             this.platform.config.webhookPort,
-            this.platform.log);
+            this.lock.oldLockId,
+            this.lock.lockId);
 
         this.accessory.getService(this.platform.Service.AccessoryInformation)!
             .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Fabian de Groot')
@@ -37,18 +42,24 @@ export class LockMechanismeAccessory {
 
         this.loqedService.getLockedState(this.lock.lockId);
         this.loqedService.lockStatus$
+            .pipe(
+                filter(x => x?.id === this.lock.lockId)
+            )
             .subscribe(status => {
                 if (!status) {
                     return;
                 }
 
-                if (status.state === LockedState.Unlocked || status.state === LockedState.Locked) {
-                    this.state = status.state;
+                if (this.state.current !== status.state && (status.state === LockState.Unlocked || status.state === LockState.Locked)) {
+                    this.state.current = status.state;
+                    this.platform.log.debug('Updating current state to', LockState[this.state.current]);
                     this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState, status.state);
                 }
 
-                this.batteryService.setCharacteristic(this.platform.Characteristic.BatteryLevel, status.battery_percentage);
-                this.batteryService.setCharacteristic(this.platform.Characteristic.StatusLowBattery, status.battery_percentage <= 20);
+                if (this.state.batteryPercentage !== status.battery_percentage) {
+                    this.batteryService.updateCharacteristic(this.platform.Characteristic.BatteryLevel, status.battery_percentage);
+                    this.batteryService.updateCharacteristic(this.platform.Characteristic.StatusLowBattery, status.battery_percentage <= 20);
+                }
             });
 
         this.lockMechanismeService.setCharacteristic(this.platform.Characteristic.Name, this.lock.name);
@@ -62,27 +73,43 @@ export class LockMechanismeAccessory {
     }
 
     setLockTargetState(value: CharacteristicValue, callback: CharacteristicSetCallback) {
-        this.state = value === this.platform.Characteristic.LockTargetState.UNSECURED
-            ? LockedState.Unlocked
-            : LockedState.Locked;
+        const newTargetState = value === this.platform.Characteristic.LockTargetState.UNSECURED
+            ? LockState.Unlocked
+            : LockState.Locked;
 
-        this.platform.log.debug('Updating target state to', this.state === LockedState.Unlocked ? 'Unlocked' : 'Locked');
+        if (newTargetState === this.state.target) {
+            return;
+        }
+
+        this.state.target = newTargetState;
+
+        this.platform.log.debug('Updating target state to', LockState[this.state.current]);
         this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockTargetState,
-            this.state === LockedState.Unlocked ? 0 : 1
+            this.state.target === LockState.Unlocked
+                ? this.platform.Characteristic.LockTargetState.UNSECURED
+                : this.platform.Characteristic.LockTargetState.SECURED
         );
 
-        this.loqedService.toggle(this.state);
+        this.loqedService.toggle(this.state.target);
+
+        // todo set current state aswell if no webhook port is configured
 
         callback(null);
     }
 
-    getLockTargetState(callback: CharacteristicGetCallback): void {
-        this.platform.log.debug('Get Characteristic LockTargetState ->', this.state === LockedState.Unlocked ? 'Unlocked' : 'Locked');
-        callback(null, this.state === LockedState.Unlocked ? 0 : 1);
+    getLockCurrentState(callback: CharacteristicGetCallback): void {
+        this.platform.log.debug('Get Characteristic LockCurrentState ->', LockState[this.state.target]);
+        callback(null, this.state.target === LockState.Unlocked
+            ? this.platform.Characteristic.LockCurrentState.UNSECURED
+            : this.platform.Characteristic.LockCurrentState.SECURED
+        );
     }
 
-    getLockCurrentState(callback: CharacteristicGetCallback): void {
-        this.platform.log.debug('Get Characteristic LockCurrentState ->', this.state === LockedState.Unlocked ? 'Unlocked' : 'Locked');
-        callback(null, this.state === LockedState.Unlocked ? 0 : 1);
+    getLockTargetState(callback: CharacteristicGetCallback): void {
+        this.platform.log.debug('Get Characteristic LockTargetState ->', LockState[this.state.target]);
+        callback(null, this.state.target === LockState.Unlocked
+            ? this.platform.Characteristic.LockTargetState.UNSECURED
+            : this.platform.Characteristic.LockTargetState.SECURED
+        );
     }
 }

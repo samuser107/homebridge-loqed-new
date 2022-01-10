@@ -1,4 +1,4 @@
-import { LockedState } from './locked-state';
+import { LockState } from './lock-state';
 
 export class LoqedStatus {
     id!: string;
@@ -17,14 +17,14 @@ export class LoqedStatus {
         }
     }
 
-    get state(): LockedState {
+    get state(): LockState {
         switch (this.bolt_state.toLowerCase()) {
             case 'day_lock':
-                return LockedState.Unlocked;
+                return LockState.Unlocked;
             case 'night_lock':
-                return LockedState.Locked;
+                return LockState.Locked;
             default:
-                return LockedState.Unknown;
+                return LockState.Unknown;
         }
     }
 }
