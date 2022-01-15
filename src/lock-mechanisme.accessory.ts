@@ -103,8 +103,22 @@ export class LockMechanismeAccessory {
 
         this.loqedService.toggle(this.state.target);
 
-        // set current state aswell if no webhook port is configured
-        if (!this.platform.config.webhookPort) {
+        if (this.platform.config.webhookPort) {
+            // set the state manually if the webhook hasn't reported the lock closed in N seconds
+            setTimeout(() => {
+                if (this.state.current !== this.state.target) {
+                    this.platform.log.debug('Manually updating current state from', LockState[this.state.current], 'to', LockState[this.state.target]);
+                    this.state.current = this.state.target;
+                    this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState,
+                        this.state.target === LockState.Unlocked
+                            ? this.platform.Characteristic.LockCurrentState.UNSECURED
+                            : this.platform.Characteristic.LockCurrentState.SECURED
+                    );
+                }
+            }, 10000);
+        }
+        else {
+            // set current state after N seconds if no webhook port is configured
             setTimeout(() => {
                 this.platform.log.debug('Updating current state from', LockState[this.state.current], 'to', LockState[this.state.target]);
                 this.state.current = this.state.target;
