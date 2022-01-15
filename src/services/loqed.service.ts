@@ -40,8 +40,8 @@ export class LoqedService {
                 return;
             }
 
-            this.log.debug('Received webhook request from', req.ip, req.hostname);
-            this.log.debug(req.body);
+            this.log.info('Received webhook request from', req.ip, req.hostname);
+            this.log.info(req.body);
 
             const newStatus = new LoqedStatus(this.lockStatusSubject.value);
             newStatus.bolt_state = req.body.requested_state;
@@ -52,7 +52,7 @@ export class LoqedService {
         });
 
         this.server.listen(port, () => {
-            this.log.debug('Listening for webhook request on port', port);
+            this.log.info('Listening for webhook request on port', port);
         });
     }
 
