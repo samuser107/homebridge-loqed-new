@@ -50,16 +50,27 @@ export class LockMechanismeAccessory {
                     return;
                 }
 
-                this.platform.log.debug('Received status update to', LockState[status.state]);
+                this.platform.log.info('Received status update to', LockState[status.state]);
 
                 if (this.state.current !== status.state && (status.state === LockState.Unlocked || status.state === LockState.Locked)) {
-                    this.platform.log.debug('Updating current state from', LockState[this.state.current], 'to', LockState[status.state]);
+                    this.platform.log.info('Updating current state from', LockState[this.state.current], 'to', LockState[status.state]);
                     this.state.current = status.state;
                     this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState,
-                        this.state.target === LockState.Unlocked
+                        status.state === LockState.Unlocked
                             ? this.platform.Characteristic.LockCurrentState.UNSECURED
                             : this.platform.Characteristic.LockCurrentState.SECURED
                     );
+
+                    // also "correct" the target state if the lock state change came from another app or manually
+                    if (this.state.target !== status.state) {
+                        this.platform.log.info('Correcting target state from', LockState[this.state.target], 'to', LockState[status.state]);
+                        this.state.target = status.state;
+                        this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockTargetState,
+                            status.state === LockState.Unlocked
+                                ? this.platform.Characteristic.LockTargetState.UNSECURED
+                                : this.platform.Characteristic.LockTargetState.SECURED
+                        );
+                    }
                 }
 
                 // first status update should also set the target state
