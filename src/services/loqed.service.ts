@@ -15,6 +15,9 @@ export class LoqedService {
     private setStateUrl = 'https://gateway.production.loqed.com/v1/locks/{OLDLOCKID}/state?lock_api_key={APIKEY}&api_token={APITOKEN}&lock_state={STATE}&local_key_id=0';
     private getStateUrl = 'https://app.loqed.com/API/lock_status.php?api_token={APITOKEN}&lock_id={LOCKID}';
 
+    private statusPollTimeout!: NodeJS.Timeout;
+    private statusPollFrequencyInMinutes = 15;
+
     constructor(
         private log: Logger,
         private apiKey: string,
@@ -52,7 +55,7 @@ export class LoqedService {
         });
 
         this.server.listen(port, () => {
-            this.log.info('Listening for webhook request on port', port);
+            this.log.info('Listening for webhook requests on port', port);
         });
     }
 
@@ -60,35 +63,29 @@ export class LoqedService {
         return this.changeState(lockedState === LockState.Unlocked ? 'DAY_LOCK' : 'NIGHT_LOCK');
     }
 
-    public async getLockedState(lockId: string): Promise<LockState> {
-        const url = this.getStateUrl
-            .replace('{APITOKEN}', this.apiToken)
-            .replace('{LOCKID}', lockId);
-
-        const status = new LoqedStatus(await this.request<LoqedStatus>(url, 'GET'));
-        this.lockStatusSubject.next(status);
-
-        switch (status.bolt_state) {
-            case 'day_lock':
-                return LockState.Unlocked;
-            case 'night_lock':
-                return LockState.Locked;
-            default:
-                throw new Error('Unknown state');
+    public startPolling(): void {
+        if (this.statusPollTimeout) {
+            clearTimeout(this.statusPollTimeout);
         }
+
+        const continousLoop = true;
+
+        setTimeout(async () => {
+            while (continousLoop) {
+                await this.getLoqedStatus();
+                await this.sleep(this.statusPollFrequencyInMinutes * 60 * 1000);
+            }
+        }, 0);
     }
 
-    public async startPollingFor(lockedState: LockState): Promise<boolean> {
-        for (let i = 0; i < 5; i++) {
-            const currentLockedState = await this.getLockedState(this.lockId);
-            if (lockedState === currentLockedState) {
-                return true;
-            }
+    private async getLoqedStatus(): Promise<void> {
+        const url = this.getStateUrl
+            .replace('{APITOKEN}', this.apiToken)
+            .replace('{LOCKID}', this.lockId);
 
-            await new Promise(r => setTimeout(r, 1000));
-        }
+        const loqedStatus = new LoqedStatus(await this.request<LoqedStatus>(url, 'GET'));
 
-        return false;
+        this.lockStatusSubject.next(loqedStatus);
     }
 
     private async changeState(state: string): Promise<void> {
@@ -128,5 +125,9 @@ export class LoqedService {
                 }
             });
         });
+    }
+
+    private async sleep(milliSeconds: number) {
+        return new Promise(resolve => setTimeout(resolve, milliSeconds));
     }
 }

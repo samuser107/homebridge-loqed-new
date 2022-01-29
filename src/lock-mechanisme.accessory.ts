@@ -4,6 +4,7 @@ import { LockState } from './models/lock-state';
 import { LoqedPlatform } from './loqed.platform';
 import { LoqedService } from './services/loqed.service';
 import { Service, PlatformAccessory, CharacteristicValue, CharacteristicSetCallback, CharacteristicGetCallback } from 'homebridge';
+import { LoqedStatus } from './models/loqed-status.model';
 
 export class LockMechanismeAccessory {
     private lockMechanismeService: Service;
@@ -15,8 +16,10 @@ export class LockMechanismeAccessory {
     private state = {
         current: LockState.Unknown,
         target: LockState.Unknown,
-        batteryPercentage: null
+        batteryPercentage: -1
     };
+
+    private minBatteryLevel = 20;
 
     constructor(
         private readonly platform: LoqedPlatform,
@@ -40,49 +43,13 @@ export class LockMechanismeAccessory {
         this.lockMechanismeService = this.accessory.getService(this.platform.Service.LockMechanism) || this.accessory.addService(this.platform.Service.LockMechanism);
         this.batteryService = this.accessory.getService(this.platform.Service.Battery) || this.accessory.addService(this.platform.Service.Battery);
 
-        this.loqedService.getLockedState(this.lock.lockId);
         this.loqedService.lockStatus$
             .pipe(
                 filter(x => x?.id === this.lock.lockId)
             )
-            .subscribe(status => {
-                if (!status) {
-                    return;
-                }
+            .subscribe(status => this.processLoqedStatusUpdate(status));
 
-                this.platform.log.info('Received status update to', LockState[status.state]);
-
-                if (this.state.current !== status.state && (status.state === LockState.Unlocked || status.state === LockState.Locked)) {
-                    this.platform.log.info('Updating current state from', LockState[this.state.current], 'to', LockState[status.state]);
-                    this.state.current = status.state;
-                    this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState,
-                        status.state === LockState.Unlocked
-                            ? this.platform.Characteristic.LockCurrentState.UNSECURED
-                            : this.platform.Characteristic.LockCurrentState.SECURED
-                    );
-
-                    // also "correct" the target state if the lock state change came from another app or manually
-                    if (this.state.target !== status.state) {
-                        this.platform.log.info('Correcting target state from', LockState[this.state.target], 'to', LockState[status.state]);
-                        this.state.target = status.state;
-                        this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockTargetState,
-                            status.state === LockState.Unlocked
-                                ? this.platform.Characteristic.LockTargetState.UNSECURED
-                                : this.platform.Characteristic.LockTargetState.SECURED
-                        );
-                    }
-                }
-
-                // first status update should also set the target state
-                if (this.state.target === LockState.Unknown) {
-                    this.state.target = this.state.current;
-                }
-
-                if (this.state.batteryPercentage !== status.battery_percentage) {
-                    this.batteryService.updateCharacteristic(this.platform.Characteristic.BatteryLevel, status.battery_percentage);
-                    this.batteryService.updateCharacteristic(this.platform.Characteristic.StatusLowBattery, status.battery_percentage <= 20);
-                }
-            });
+        this.loqedService.startPolling();
 
         this.lockMechanismeService.setCharacteristic(this.platform.Characteristic.Name, this.lock.name);
 
@@ -158,5 +125,47 @@ export class LockMechanismeAccessory {
             ? this.platform.Characteristic.LockTargetState.UNSECURED
             : this.platform.Characteristic.LockTargetState.SECURED
         );
+    }
+
+    processLoqedStatusUpdate(status: LoqedStatus | null): void {
+        if (!status) {
+            return;
+        }
+
+        this.platform.log.info('Received status update', JSON.stringify(status));
+        this.platform.log.info('Received status update to', LockState[status.state]);
+
+        if (this.state.current !== status.state && (status.state === LockState.Unlocked || status.state === LockState.Locked)) {
+            this.platform.log.info('Updating current state from', LockState[this.state.current], 'to', LockState[status.state]);
+            this.state.current = status.state;
+            this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockCurrentState,
+                status.state === LockState.Unlocked
+                    ? this.platform.Characteristic.LockCurrentState.UNSECURED
+                    : this.platform.Characteristic.LockCurrentState.SECURED
+            );
+
+            // also "correct" the target state if the lock state change came from another app or manually
+            if (this.state.target !== status.state) {
+                this.platform.log.info('Correcting target state from', LockState[this.state.target], 'to', LockState[status.state]);
+                this.state.target = status.state;
+                this.lockMechanismeService.updateCharacteristic(this.platform.Characteristic.LockTargetState,
+                    status.state === LockState.Unlocked
+                        ? this.platform.Characteristic.LockTargetState.UNSECURED
+                        : this.platform.Characteristic.LockTargetState.SECURED
+                );
+            }
+        }
+
+        // first status update should also set the target state
+        if (this.state.target === LockState.Unknown) {
+            this.state.target = this.state.current;
+        }
+
+        if (this.state.batteryPercentage !== status.battery_percentage) {
+            this.platform.log.info('Updating battery level from', this.state.batteryPercentage, 'to', status.battery_percentage);
+            this.state.batteryPercentage = status.battery_percentage;
+            this.batteryService.updateCharacteristic(this.platform.Characteristic.BatteryLevel, status.battery_percentage);
+            this.batteryService.updateCharacteristic(this.platform.Characteristic.StatusLowBattery, status.battery_percentage <= this.minBatteryLevel);
+        }
     }
 }

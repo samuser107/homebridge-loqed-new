@@ -1,15 +1,15 @@
 import { LockState } from './lock-state';
 
 export class LoqedStatus {
-    id!: string;
     battery_percentage!: number;
     battery_type!: number;
+    bolt_state_numeric!: number;
     bolt_state!: string;
     guest_access_mode!: number;
-    twist_assist!: number;
-    touch_to_connect!: number;
+    id!: string;
     lock_direction!: number;
-    bolt_state_numeric!: number;
+    touch_to_connect!: number;
+    twist_assist!: number;
 
     constructor(init?: Partial<LoqedStatus>) {
         if (init) {
@@ -19,6 +19,8 @@ export class LoqedStatus {
 
     get state(): LockState {
         switch (this.bolt_state.toLowerCase()) {
+            case 'open':
+                return LockState.Open;
             case 'day_lock':
                 return LockState.Unlocked;
             case 'night_lock':
