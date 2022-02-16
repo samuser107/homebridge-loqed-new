@@ -42,6 +42,12 @@
                             "title": "Lock Id",
                             "type": "string",
                             "required": false
+                        },
+                        "statePollingFrequencyInMinutes": {
+                            "title": "State polling frequency in minutes",
+                            "description": "Mainly for battery level",
+                            "type": "number",
+                            "required": false
                         }
                     }
                 }
@@ -62,7 +68,8 @@
                     "items": [
                         "locks[].name",
                         "locks[].oldLockId",
-                        "locks[].lockId"
+                        "locks[].lockId",
+                        "locks[].statePollingFrequencyInMinutes"
                     ]
                 }
             ]

@@ -49,7 +49,7 @@ export class LockMechanismeAccessory {
             )
             .subscribe(status => this.processLoqedStatusUpdate(status));
 
-        this.loqedService.startPolling();
+        this.loqedService.startPolling(this.lock.statePollingFrequencyInMinutes);
 
         this.lockMechanismeService.setCharacteristic(this.platform.Characteristic.Name, this.lock.name);
 

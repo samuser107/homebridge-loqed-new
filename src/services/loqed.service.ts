@@ -16,7 +16,6 @@ export class LoqedService {
     private getStateUrl = 'https://app.loqed.com/API/lock_status.php?api_token={APITOKEN}&lock_id={LOCKID}';
 
     private statusPollTimeout!: NodeJS.Timeout;
-    private statusPollFrequencyInMinutes = 15;
 
     constructor(
         private log: Logger,
@@ -63,7 +62,11 @@ export class LoqedService {
         return this.changeState(lockedState === LockState.Unlocked ? 'DAY_LOCK' : 'NIGHT_LOCK');
     }
 
-    public startPolling(): void {
+    public startPolling(frequencyInMinutes?: number): void {
+        if (!frequencyInMinutes || frequencyInMinutes === 0) {
+            return;
+        }
+
         if (this.statusPollTimeout) {
             clearTimeout(this.statusPollTimeout);
         }
@@ -73,7 +76,7 @@ export class LoqedService {
         setTimeout(async () => {
             while (continousLoop) {
                 await this.getLoqedStatus();
-                await this.sleep(this.statusPollFrequencyInMinutes * 60 * 1000);
+                await this.sleep(frequencyInMinutes * 60 * 1000);
             }
         }, 0);
     }
