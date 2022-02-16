@@ -67,6 +67,8 @@ export class LoqedService {
             return;
         }
 
+        this.log.info('Started state polling every', frequencyInMinutes, 'minutes');
+
         if (this.statusPollTimeout) {
             clearTimeout(this.statusPollTimeout);
         }

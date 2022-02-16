@@ -47,6 +47,7 @@ export class LoqedPlatform implements DynamicPlatformPlugin {
 
             if (existingAccessory) {
                 this.log.info('Restoring existing accessory from cache:', lock.name);
+                existingAccessory.context.device = lock;
                 new LockMechanismeAccessory(this, existingAccessory);
             }
             else {
