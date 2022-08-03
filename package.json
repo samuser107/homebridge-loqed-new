@@ -1,16 +1,16 @@
 {
   "private": false,
   "displayName": "Loqed",
-  "name": "homebridge-loqed",
-  "version": "0.0.14",
-  "description": "A short description about what your plugin does.",
+  "name": "homebridge-loqed-new",
+  "version": "0.1.0",
+  "description": "Homebridge plugin for Loqed smart lock",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git://github.com/fbdegroot/homebridge-loqed.git"
+    "url": "git://github.com/gobyn/homebridge-loqed-new.git"
   },
   "bugs": {
-    "url": "https://github.com/fbdegroot/homebridge-loqed/issues"
+    "url": "https://github.com/gobyn/homebridge-loqed-new/issues"
   },
   "engines": {
     "node": ">=14.18.1",
