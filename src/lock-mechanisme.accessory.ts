@@ -36,8 +36,8 @@ export class LockMechanismeAccessory {
             this.lock.lockId);
 
         this.accessory.getService(this.platform.Service.AccessoryInformation)!
-            .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Fabian de Groot')
-            .setCharacteristic(this.platform.Characteristic.Model, 'Loqed')
+            .setCharacteristic(this.platform.Characteristic.Manufacturer, 'Loqed')
+            .setCharacteristic(this.platform.Characteristic.Model, 'Touch Smart Lock')
             .setCharacteristic(this.platform.Characteristic.SerialNumber, '12-34-56-78');
 
         this.lockMechanismeService = this.accessory.getService(this.platform.Service.LockMechanism) || this.accessory.addService(this.platform.Service.LockMechanism);

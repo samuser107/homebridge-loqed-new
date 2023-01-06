@@ -12,7 +12,7 @@ export class LoqedService {
     private readonly lockStatusSubject: BehaviorSubject<LoqedStatus | null>;
     private server!: express.Application;
 
-    private setStateUrl = 'https://gateway.production.loqed.com/v1/locks/{OLDLOCKID}/state?lock_api_key={APIKEY}&api_token={APITOKEN}&lock_state={STATE}&local_key_id=2';
+    private setStateUrl = 'https://gateway.production.loqed.com/v1/locks/{OLDLOCKID}/state?lock_api_key={APIKEY}&api_token={APITOKEN}&lock_state={STATE}&local_key_id=0';
     private getStateUrl = 'https://app.loqed.com/API/lock_status.php?api_token={APITOKEN}&lock_id={LOCKID}';
 
     private statusPollTimeout!: NodeJS.Timeout;
